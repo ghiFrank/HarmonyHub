@@ -80,7 +80,7 @@ def spotify_callback(request):
         # Store access token securely (e.g., in session)
         if 'access_token' in response_data:
             request.session['spotify_access_token'] = response_data['access_token']
-            return redirect('/api/index')  # Redirect to homepage or desired page
+            return redirect('index')  # Redirect to homepage or desired page
         else:
             return render(request, 'error.html', {'error_message': 'Failed to retrieve access token'})
     else:
@@ -121,6 +121,7 @@ def index(request):
                 'name': track['name'],
                 'artists': track['artists'],
                 'cover_image_url': cover_image_url,
+                'spotify_url': track['external_urls']['spotify']
             })
         
         context = {
@@ -177,6 +178,7 @@ def recommended(request):
                 'name': track['name'],
                 'artists': track['artists'],
                 'cover_image_url': cover_image_url,
+                'spotify_url': track['external_urls']['spotify']
             })
         
         context = {
