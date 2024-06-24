@@ -1,0 +1,21 @@
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HarmonyHub</title>
+</head>
+<body>
+    <h1>Top Tracks</h1>
+    <ul>
+        {% if top_tracks %}
+            {% for track in top_tracks %}
+                <li>{{ track.name }} by {{ track.artists|join:", " }}</li>
+            {% endfor %}
+        {% else %}
+            <li>No top tracks found.</li>
+        {% endif %}
+    </ul>
+</body>
+</html>
