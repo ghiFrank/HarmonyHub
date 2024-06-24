@@ -20,6 +20,6 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('music.urls')),
-    path('callback/', include('music.callback_urls')), # Define callback URL here
+    path('', include('music.callback_urls')),
 ]
 

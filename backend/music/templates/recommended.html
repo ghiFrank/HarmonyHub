@@ -1,0 +1,30 @@
+<!-- recommended.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HarmonyHub - Recommended Tracks</title>
+</head>
+<body>
+    <h1>Recommended Tracks</h1>
+    <ul>
+        {% for track in recommended_tracks %}
+            <li>
+                <img src="{{ track.cover_image_url }}" alt="{{ track.name }} cover" style="width: 100px; height: 100px;">
+                {{ track.name }} by {{ track.artists.0.name }}
+            </li>
+        {% endfor %}
+    </ul>
+    
+    <!-- Optionally include a link back to index.html -->
+    <button onclick="refreshPage()" class="button">Refresh Recommendations</button>
+    
+    <script>
+        function refreshPage() {
+            window.location.reload();
+        }
+    </script>
+    <a href="{% url 'index' %}" class="button">Back to Top Tracks</a>
+</body>
+</html>

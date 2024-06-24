@@ -4,5 +4,7 @@ from django.urls import path
 from . import views  # Import your views module
 
 urlpatterns = [
-    path('', views.spotify_callback, name='spotify_callback'),
+        path('login', views.authorize_spotify, name="login"),
+    path('index',  views.index, name='index'),
+     path('recommended',  views.recommended, name='recommended'),
 ]

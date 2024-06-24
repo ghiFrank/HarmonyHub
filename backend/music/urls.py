@@ -6,7 +6,7 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from django.urls import path
-from .views import fetch_spotify_data,authorize_spotify,index
+from .views import fetch_spotify_data
 
 router = DefaultRouter()
 router.register(r'songs', SongViewSet)
@@ -19,6 +19,4 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('fetch-spotify-data/', fetch_spotify_data, name='fetch_spotify_data'),
     path('accounts/', include('allauth.urls')),
-    path('login', authorize_spotify, name="login"),
-    path('index', index, name='index'),
 ]

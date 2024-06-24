@@ -19,6 +19,7 @@ from django.shortcuts import render
 from django.conf import settings
 import logging
 
+
 class SongViewSet(viewsets.ModelViewSet):
     queryset = Song.objects.all()
     serializer_class = SongSerializer
@@ -48,20 +49,10 @@ class RegisterView(generics.CreateAPIView):
 
 def authorize_spotify(request):
     # Redirect user to Spotify authorization URL
-    scope = 'user-read-private user-read-email'  # Adjust scopes based on your needs
+    scope = 'user-read-private user-read-email user-library-read user-top-read'  # Adjust scopes based on your needs
     auth_url = f'https://accounts.spotify.com/authorize?client_id={settings.SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri={settings.SPOTIFY_REDIRECT_URI}&scope={scope}'
     return redirect(auth_url)
 
-def spotify_login(request):
-    sp_oauth = SpotifyOAuth(
-        client_id="42f2cc13d26f4e1eb4319c80cf970c88",
-        client_secret="0a41fba31ede44ea9cc40703f74418ef",
-        redirect_uri="http://127.0.0.1:8000/callback/",
-        scope="user-library-read user-top-read"
-    )
-
-    auth_url = sp_oauth.get_authorize_url()
-    return redirect(auth_url)
 
 def spotify_callback(request):
     # Handle callback from Spotify after user authorization
@@ -86,7 +77,6 @@ def spotify_callback(request):
         # Make POST request to Spotify token endpoint
         response = requests.post(token_url, data=payload)
         response_data = response.json()
-
         # Store access token securely (e.g., in session)
         if 'access_token' in response_data:
             request.session['spotify_access_token'] = response_data['access_token']
@@ -104,28 +94,96 @@ def fetch_spotify_data(request):
 
 logger = logging.getLogger(__name__)
 
+
+
 def index(request):
-    access_token = request.session.get('spotify_access_token')
-
+    # Fetch user's Spotify access token
+    access_token = request.session['spotify_access_token']
     if access_token:
-        url = 'https://api.spotify.com/v1/me/top/tracks?time_range=long_term&limit=5'
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Content-Type': 'application/json',
-        }
-
-        try:
+        # Function to fetch user's top tracks
+        def get_top_tracks(access_token):
+            url = 'https://api.spotify.com/v1/me/top/tracks?time_range=long_term&limit=5'
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json',
+            }
             response = requests.get(url, headers=headers)
-            response.raise_for_status()
-
-            top_tracks = response.json().get('items', [])  # Ensure to handle empty response
-            logger.info(f"Fetched {len(top_tracks)} top tracks: {top_tracks}")  # Use logger for debugging
-            context = {'top_tracks': top_tracks}
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching top tracks: {str(e)}")  # Log error for debugging
-            context = {'error_message': f'Error fetching top tracks: {str(e)}'}
+            response.raise_for_status()  # Raise error for non-200 status codes
+            return response.json()['items']
+        
+        # Fetch user's top tracks with cover images
+        top_tracks = get_top_tracks(access_token)
+        top_tracks_with_images = []
+        for track in top_tracks:
+            # Fetch cover image URL (first image in 'images' array)
+            cover_image_url = track['album']['images'][0]['url'] if track['album']['images'] else None
+            top_tracks_with_images.append({
+                'name': track['name'],
+                'artists': track['artists'],
+                'cover_image_url': cover_image_url,
+            })
+        
+        context = {
+            'top_tracks': top_tracks_with_images,
+        }
     else:
-
         context = {'error_message': 'No Spotify access token available.'}
-
+    
     return render(request, 'index.html', context)
+
+def recommended(request):
+    # Fetch user's Spotify access token
+    access_token = request.session['spotify_access_token']
+    
+    if access_token:
+        # Function to fetch recommended tracks based on user's top tracks
+        def get_recommendations(access_token, top_tracks_ids):
+            url = 'https://api.spotify.com/v1/recommendations'
+            seed_tracks = ','.join(top_tracks_ids)
+            params = {
+                'limit': 5,
+                'seed_tracks': seed_tracks,
+            }
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json',
+            }
+            response = requests.get(url, params=params, headers=headers)
+            response.raise_for_status()  # Raise error for non-200 status codes
+            return response.json()['tracks']
+        
+        # Function to fetch user's top tracks
+        def get_top_tracks(access_token):
+            url = 'https://api.spotify.com/v1/me/top/tracks?time_range=long_term&limit=5'
+            headers = {
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json',
+            }
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()  # Raise error for non-200 status codes
+            return response.json()['items']
+
+        # Fetch user's top tracks IDs
+        top_tracks = get_top_tracks(access_token)
+        top_tracks_ids = [track['id'] for track in top_tracks]
+        
+        # Fetch recommended tracks with cover images based on top tracks
+        recommended_tracks = get_recommendations(access_token, top_tracks_ids)
+        recommended_tracks_with_images = []
+        for track in recommended_tracks:
+            # Fetch cover image URL (first image in 'images' array)
+            cover_image_url = track['album']['images'][0]['url'] if track['album']['images'] else None
+            recommended_tracks_with_images.append({
+                'name': track['name'],
+                'artists': track['artists'],
+                'cover_image_url': cover_image_url,
+            })
+        
+        context = {
+            'recommended_tracks': recommended_tracks_with_images,
+        }
+    else:
+        context = {'error_message': 'No Spotify access token available.'}
+    
+    return render(request, 'recommended.html', context)
+
