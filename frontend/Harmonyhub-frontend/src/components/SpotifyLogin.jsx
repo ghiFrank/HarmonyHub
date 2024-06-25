@@ -13,8 +13,7 @@ const SpotifyLogin = () => {
 
     return (
         <div>
-            <h1>Login with Spotify</h1>
-            <button onClick={handleLogin}>Login with Spotify</button>
+            <button onClick={handleLogin} className='bg-green-500 p-2 border-white border-2 rounded-xl'>Get Started</button>
         </div>
     );
 };

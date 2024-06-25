@@ -1,24 +1,20 @@
 // src/App.js
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import SpotifyLogin from './components/SpotifyLogin';
-import SpotifyCallback from './components/SpotifyCallback';
-
+import { BrowserRouter as Router } from 'react-router-dom';
+import Nav from './components/Nav.jsx';
+import Hero from "./components/Hero.jsx";
+import Download from "./components/Download.jsx";
+import Footer from "./components/Footer.jsx";
 const App = () => {
     return (
+      <div className='bg-black'>
         <Router>
-            <div className="App">
-                <header className="App-header">
-                    <h1>Welcome to the Spotify App</h1>
-                </header>
-                <main>
-                    <Routes>
-                        <Route path="/" element={<SpotifyLogin />} />
-                        <Route path="/callback" element={<SpotifyCallback />} />
-                    </Routes>
-                </main>
-            </div>
+          <Nav />
+          <Hero />
+          <Download />
+          <Footer />
         </Router>
+      </div>
     );
 };
 
