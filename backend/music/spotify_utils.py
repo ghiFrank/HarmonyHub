@@ -7,7 +7,7 @@ from .models import Song, UserInteraction
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
     client_id='42f2cc13d26f4e1eb4319c80cf970c88',
     client_secret='0a41fba31ede44ea9cc40703f74418ef',
-    redirect_uri="http://127.0.0.1:8000/callback/",
+    redirect_uri="http://127.0.0.1:8000/api/callback/",
     scope="user-library-read user-top-read"
 ))
 

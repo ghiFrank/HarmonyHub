@@ -18,7 +18,7 @@ import requests
 from django.shortcuts import render
 from django.conf import settings
 import logging
-
+from django.views.decorators.csrf import csrf_exempt
 
 class SongViewSet(viewsets.ModelViewSet):
     queryset = Song.objects.all()
@@ -46,10 +46,10 @@ class RegisterView(generics.CreateAPIView):
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         })
+    
 
 def authorize_spotify(request):
-    # Redirect user to Spotify authorization URL
-    scope = 'user-read-private user-read-email user-library-read user-top-read'  # Adjust scopes based on your needs
+    scope = 'user-read-private user-read-email user-library-read user-top-read'
     auth_url = f'https://accounts.spotify.com/authorize?client_id={settings.SPOTIFY_CLIENT_ID}&response_type=code&redirect_uri={settings.SPOTIFY_REDIRECT_URI}&scope={scope}'
     return redirect(auth_url)
 
@@ -80,11 +80,11 @@ def spotify_callback(request):
         # Store access token securely (e.g., in session)
         if 'access_token' in response_data:
             request.session['spotify_access_token'] = response_data['access_token']
-            return redirect('index')  # Redirect to homepage or desired page
+            return redirect(f'{settings.FRONTEND_URL}/callback?access_token={request.session['spotify_access_token']}')
         else:
-            return render(request, 'error.html', {'error_message': 'Failed to retrieve access token'})
+            return redirect(f'{settings.FRONTEND_URL}/login?error=Failed to retrieve access token')
     else:
-        return render(request, 'error.html', {'error_message': 'Authorization code not found'})
+        return redirect(f'{settings.FRONTEND_URL}/login?error=Authorization code not found')
 
 def fetch_spotify_data(request):
     user = request.user

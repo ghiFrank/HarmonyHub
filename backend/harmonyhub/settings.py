@@ -48,7 +48,7 @@ SOCIALACCOUNT_PROVIDERS = {
 # Spotify Crendentials
 SPOTIFY_CLIENT_ID = '42f2cc13d26f4e1eb4319c80cf970c88'
 SPOTIFY_CLIENT_SECRET = '0a41fba31ede44ea9cc40703f74418ef'
-SPOTIFY_REDIRECT_URI = 'http://127.0.0.1:8000/callback/'
+SPOTIFY_REDIRECT_URI = 'http://127.0.0.1:8000/api/callback/'
 
 # Application definition
 
@@ -67,6 +67,7 @@ INSTALLED_APPS = [
     'allauth.account',
     'allauth.socialaccount',
     'allauth.socialaccount.providers.spotify',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
@@ -78,7 +79,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'harmonyhub.urls'
 
@@ -177,3 +182,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+FRONTEND_URL = 'http://localhost:5173/'
