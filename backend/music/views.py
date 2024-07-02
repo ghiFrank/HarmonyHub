@@ -1,52 +1,13 @@
-from rest_framework import viewsets
-from .models import Song, UserInteraction
-from .serializers import SongSerializer, UserInteractionSerializer
-from django.contrib.auth.models import User
-from rest_framework import generics
-from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework.permissions import AllowAny
-from .serializers import UserSerializer
-from rest_framework.permissions import IsAuthenticated
+
 from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .spotify_utils import get_user_top_tracks
-from django.http import HttpResponse
-import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import requests
+from requests.auth import HTTPBasicAuth
+import base64
 from django.shortcuts import render
 from django.conf import settings
-import logging
-from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 
-class SongViewSet(viewsets.ModelViewSet):
-    queryset = Song.objects.all()
-    serializer_class = SongSerializer
-    permission_classes = [IsAuthenticated]
-
-class UserInteractionViewSet(viewsets.ModelViewSet):
-    queryset = UserInteraction.objects.all()
-    serializer_class = UserInteractionSerializer
-    permission_classes = [IsAuthenticated]
-
-class RegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
-    permission_classes = (AllowAny,)
-    serializer_class = UserSerializer
-
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        user.is_active = True  # Ensure user is active
-        user.save()
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        })
-    
 
 def authorize_spotify(request):
     scope = 'user-read-private user-read-email user-library-read user-top-read'
@@ -64,53 +25,27 @@ def spotify_callback(request):
         return render(request, 'error.html', {'error_message': error})
 
     if code:
-        # Exchange authorization code for access token
-        token_url = 'https://accounts.spotify.com/api/token'
-        payload = {
-            'grant_type': 'authorization_code',
+        base64_bytes = base64.b64encode(f'{settings.SPOTIFY_CLIENT_ID}:{settings.SPOTIFY_CLIENT_SECRET}'.encode("ascii"))
+        base64_string = base64_bytes.decode("ascii")
+        data = {
             'code': code,
             'redirect_uri': settings.SPOTIFY_REDIRECT_URI,
-            'client_id': settings.SPOTIFY_CLIENT_ID,
-            'client_secret': settings.SPOTIFY_CLIENT_SECRET,
+            'grant_type': 'authorization_code'
         }
-
-        # Make POST request to Spotify token endpoint
-        response = requests.post(token_url, data=payload)
-        response_data = response.json()
+        token_info = requests.post('https://accounts.spotify.com/api/token',data=data,headers={'Content-Type': 'application/x-www-form-urlencoded'},auth=HTTPBasicAuth(settings.SPOTIFY_CLIENT_ID, settings.SPOTIFY_CLIENT_SECRET))
         # Store access token securely (e.g., in session)
-        if 'access_token' in response_data:
-            request.session['spotify_access_token'] = response_data['access_token']
-            return redirect(f'{settings.FRONTEND_URL}/callback?access_token={request.session['spotify_access_token']}')
+        if 'access_token' in token_info.json():
+            return redirect(f'{settings.FRONTEND_URL}?access_token={token_info.json()['access_token']}')
         else:
             return redirect(f'{settings.FRONTEND_URL}/login?error=Failed to retrieve access token')
     else:
         return redirect(f'{settings.FRONTEND_URL}/login?error=Authorization code not found')
 
-def fetch_spotify_data(request):
-    user = request.user
-    get_user_top_tracks(user)
-    return redirect('/profile')  # Redirect to a profile or dashboard page
-
-
-logger = logging.getLogger(__name__)
-
-
 
 def index(request):
-    # Fetch user's Spotify access token
-    access_token = request.session['spotify_access_token']
-    if access_token:
-        # Function to fetch user's top tracks
-        def get_top_tracks(access_token):
-            url = 'https://api.spotify.com/v1/me/top/tracks?time_range=long_term&limit=5'
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json',
-            }
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()  # Raise error for non-200 status codes
-            return response.json()['items']
-        
+    print(request.session.keys())
+    if 'spotify_access_token' in request.session:
+        access_token = request.session['spotify_access_token']
         # Fetch user's top tracks with cover images
         top_tracks = get_top_tracks(access_token)
         top_tracks_with_images = []
@@ -124,13 +59,28 @@ def index(request):
                 'spotify_url': track['external_urls']['spotify']
             })
         
-        context = {
+        response = {
             'top_tracks': top_tracks_with_images,
+            'code': 0 
         }
     else:
-        context = {'error_message': 'No Spotify access token available.'}
-    
-    return render(request, 'index.html', context)
+        response = {'error_message': 'No Spotify access token available.',
+                    'code': 1 }
+
+    return JsonResponse(response)
+
+
+# Function to fetch user's top tracks
+def get_top_tracks(access_token):
+    url = 'https://api.spotify.com/v1/me/top/tracks?time_range=long_term&limit=5'
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json',
+    }
+    response = requests.get(url, headers=headers)
+    print(response.text)
+    response.raise_for_status()  # Raise error for non-200 status codes
+    return response.json()['items']
 
 def recommended(request):
     # Fetch user's Spotify access token
@@ -153,16 +103,6 @@ def recommended(request):
             response.raise_for_status()  # Raise error for non-200 status codes
             return response.json()['tracks']
         
-        # Function to fetch user's top tracks
-        def get_top_tracks(access_token):
-            url = 'https://api.spotify.com/v1/me/top/tracks?time_range=long_term&limit=5'
-            headers = {
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json',
-            }
-            response = requests.get(url, headers=headers)
-            response.raise_for_status()  # Raise error for non-200 status codes
-            return response.json()['items']
 
         # Fetch user's top tracks IDs
         top_tracks = get_top_tracks(access_token)
